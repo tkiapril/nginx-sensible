@@ -1,0 +1,67 @@
+server {
+    include Configuration/Common/Meta/listen_all.conf;
+
+    server_name example.com;
+
+    #charset koi8-r;
+    #access_log /var/log/nginx/log/host.access.log  main;
+    
+
+    # certs sent to the client in SERVER HELLO are concatenated in ssl_certificate
+    #ssl_certificate /var/www/hosts/example.com/ssl_certs/example.com.cert.pem;
+    #ssl_certificate_key /var/www/hosts/example.com/ssl_certs/example.com.key.pem;
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    # verify chain of trust of OCSP response using Root CA and Intermediate certs
+    #ssl_trusted_certificate /var/www/hosts/example.com/ssl_certs/trusted.cert.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/example.com/chain.pem;
+
+    include Configuration/Common/Meta/ssl.default.conf;
+
+    include Configuration/Common/Meta/miscellanous.conf;
+
+
+    # Block to check not_blacklisted or (useragent_empty and restapi)
+    set $good_user "G";
+    if ($bad_client) { set $good_user "${good_user}O"; }
+    if ($http_user_agent = "") { set $good_user "${good_user}O"; }
+    if ($uri ~ "^\/rest/") { set $good_user "${good_user}D"; }
+    if ($good_user = G) { set $good_user GOOD; }
+    if ($good_user = GD) { set $good_user GOOD; }
+    if ($good_user != GOOD) { return 444; }
+    # End of block
+    if ($bad_referer) { return 444; }
+
+    location /.well-known/acme-challenge/ {
+        auth_basic off;
+        alias   /var/lib/letsencrypt/.well-known/acme-challenge/;
+    }
+
+    location / {
+        # Jamstash on /
+        root /var/www/hosts/example.com/public_html;
+        index  index.html;
+        auth_basic "example.com";
+        auth_basic_user_file /var/www/hosts/example.com/htpasswd;
+    }
+
+    location /rest/ {
+        include Configuration/Common/proxy.conf;
+        include Configuration/Common/proxy.https.conf;
+        #proxy_max_temp_file_size 0;
+        include uwsgi_params;
+        uwsgi_pass unix:///run/uwsgi/example.com.sock;
+    }
+
+    location /manage/ {
+        include Configuration/Common/proxy.conf;
+        include Configuration/Common/proxy.https.conf;
+        # proxy_max_temp_file_size 0;
+        include uwsgi_params;
+        uwsgi_param SCRIPT_NAME /manage;
+        uwsgi_modifier1 30;
+        uwsgi_pass unix:///run/uwsgi/example.com.sock;
+    }
+
+    #error_page  404              /404.html;
+}

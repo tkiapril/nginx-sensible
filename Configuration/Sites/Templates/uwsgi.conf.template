@@ -1,0 +1,36 @@
+server {
+    include Configuration/Common/Meta/listen_all.conf;
+
+    server_name example.com;
+
+    #charset koi8-r;
+    #access_log /var/log/nginx/log/host.access.log  main;
+    
+
+    # certs sent to the client in SERVER HELLO are concatenated in ssl_certificate
+    #ssl_certificate /var/www/hosts/example.com/ssl_certs/example.com.cert.pem;
+    #ssl_certificate_key /var/www/hosts/example.com/ssl_certs/example.com.key.pem;
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    # verify chain of trust of OCSP response using Root CA and Intermediate certs
+    #ssl_trusted_certificate /var/www/hosts/example.com/ssl_certs/trusted.cert.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/example.com/chain.pem;
+
+    include Configuration/Common/Meta/ssl.default.conf;
+
+    include Configuration/Common/use_blacklist.conf;
+    include Configuration/Common/letsencrypt.conf;
+
+    include Configuration/Common/Meta/miscellanous.conf;
+
+
+    location / {
+        include Configuration/Common/proxy.conf;
+        include Configuration/Common/proxy.https.conf;
+        #proxy_max_temp_file_size 0;
+        include uwsgi_params;
+        uwsgi_pass unix:///run/uwsgi/example.com.sock;
+    }
+
+    #error_page  404              /404.html;
+}

@@ -1,0 +1,58 @@
+server {
+    include Configuration/Common/Meta/listen_all.conf;
+
+    server_name example.com;
+
+    root /var/www/hosts/example.com/public_html;
+
+    #charset koi8-r;
+    #access_log /var/log/nginx/log/host.access.log  main;
+    
+
+    # certs sent to the client in SERVER HELLO are concatenated in ssl_certificate
+    #ssl_certificate /var/www/hosts/example.com/ssl_certs/example.com.cert.pem;
+    #ssl_certificate_key /var/www/hosts/example.com/ssl_certs/example.com.key.pem;
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    # verify chain of trust of OCSP response using Root CA and Intermediate certs
+    #ssl_trusted_certificate /var/www/hosts/example.com/ssl_certs/trusted.cert.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/example.com/chain.pem;
+
+    include Configuration/Common/Meta/ssl.default.conf;
+
+    include Configuration/Common/use_blacklist.conf;
+    include Configuration/Common/letsencrypt.conf;
+
+    include Configuration/Common/Meta/miscellanous.conf;
+
+
+    location / {
+        index  index.php index.html index.htm;
+    }
+
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    
+    location ~ \.php$ {
+        try_files @php-fcgi @php-fcgi;
+    }
+
+    #error_page  404              /404.html;
+
+    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
+    #
+    #location ~ \.php$ {
+    #    proxy_pass   http://127.0.0.1;
+    #}
+
+    # Referenced https://github.com/heroku/heroku-buildpack-php/blob/master/conf/nginx/heroku.conf.php
+    location @php-fcgi {
+        include Configuration/Common/php.conf;
+        include Configuration/Common/php.values.conf;
+
+        # apply common php values; append after for local values
+        fastcgi_param PHP_VALUE "${RAW_PHP_VALUE}";
+        fastcgi_param PHP_ADMIN_VALUE "${RAW_PHP_ADMIN_VALUE}";
+
+        fastcgi_param HTTPS on;
+    }
+}
